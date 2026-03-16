@@ -1,5 +1,9 @@
 # safechan
 
+[![CI](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/philiprehberger/go-safechan.svg)](https://pkg.go.dev/github.com/philiprehberger/go-safechan)
+[![License](https://img.shields.io/github/license/philiprehberger/go-safechan)](LICENSE)
+
 Safe channel utilities for Go. Provides panic-free send/receive operations, context-aware channel communication, and channel combinators (fan-in, fan-out, broadcast).
 
 ## Install
@@ -75,6 +79,13 @@ outputs := safechan.Broadcast(input, 3)
 | `FanIn[T](channels...)` | Merge multiple channels into one |
 | `FanOut[T](ch, n)` | Distribute values round-robin to n channels |
 | `Broadcast[T](ch, n)` | Send each value to all n channels |
+
+## Development
+
+```bash
+go test ./...
+go vet ./...
+```
 
 ## License
 
