@@ -1,4 +1,4 @@
-# safechan
+# go-safechan
 
 [![CI](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/philiprehberger/go-safechan.svg)](https://pkg.go.dev/github.com/philiprehberger/go-safechan)
@@ -6,7 +6,7 @@
 
 Safe channel utilities for Go. Provides panic-free send/receive operations, context-aware channel communication, and channel combinators (fan-in, fan-out, broadcast).
 
-## Install
+## Installation
 
 ```bash
 go get github.com/philiprehberger/go-safechan
