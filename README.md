@@ -4,7 +4,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/philiprehberger/go-safechan.svg)](https://pkg.go.dev/github.com/philiprehberger/go-safechan)
 [![License](https://img.shields.io/github/license/philiprehberger/go-safechan)](LICENSE)
 
-Safe channel utilities for Go. Provides panic-free send/receive operations, context-aware channel communication, and channel combinators (fan-in, fan-out, broadcast).
+Safe channel utilities for Go with panic-free send/receive, context-aware communication, and combinators
 
 ## Installation
 
