@@ -1,8 +1,6 @@
 # go-safechan
 
-[![CI](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/philiprehberger/go-safechan.svg)](https://pkg.go.dev/github.com/philiprehberger/go-safechan)
-[![License](https://img.shields.io/github/license/philiprehberger/go-safechan)](LICENSE)
+[![CI](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/go-safechan/actions/workflows/ci.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/philiprehberger/go-safechan.svg)](https://pkg.go.dev/github.com/philiprehberger/go-safechan) [![License](https://img.shields.io/github/license/philiprehberger/go-safechan)](LICENSE)
 
 Safe channel utilities for Go with panic-free send/receive, context-aware communication, and combinators
 
