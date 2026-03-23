@@ -220,6 +220,315 @@ func TestRecvCtx_WithSender(t *testing.T) {
 	}
 }
 
+// --- Drain ---
+
+func TestDrain_BufferedChannelWithValues(t *testing.T) {
+	ch := make(chan int, 5)
+	ch <- 1
+	ch <- 2
+	ch <- 3
+	vals := Drain(ch)
+	if len(vals) != 3 {
+		t.Fatalf("expected 3 values, got %d", len(vals))
+	}
+	if vals[0] != 1 || vals[1] != 2 || vals[2] != 3 {
+		t.Fatalf("expected [1 2 3], got %v", vals)
+	}
+}
+
+func TestDrain_EmptyChannel(t *testing.T) {
+	ch := make(chan int, 5)
+	vals := Drain(ch)
+	if len(vals) != 0 {
+		t.Fatalf("expected 0 values, got %d", len(vals))
+	}
+}
+
+func TestDrain_ClosedChannel(t *testing.T) {
+	ch := make(chan int, 3)
+	ch <- 10
+	ch <- 20
+	close(ch)
+	vals := Drain(ch)
+	if len(vals) != 2 {
+		t.Fatalf("expected 2 values, got %d", len(vals))
+	}
+}
+
+func TestDrain_ClosedEmptyChannel(t *testing.T) {
+	ch := make(chan int)
+	close(ch)
+	vals := Drain(ch)
+	if len(vals) != 0 {
+		t.Fatalf("expected 0 values, got %d", len(vals))
+	}
+}
+
+// --- DrainCtx ---
+
+func TestDrainCtx_NormalOperation(t *testing.T) {
+	ch := make(chan int, 3)
+	ch <- 1
+	ch <- 2
+	ch <- 3
+	ctx := context.Background()
+	vals := DrainCtx(ctx, ch)
+	if len(vals) != 3 {
+		t.Fatalf("expected 3 values, got %d", len(vals))
+	}
+}
+
+func TestDrainCtx_CancelledContext(t *testing.T) {
+	ch := make(chan int, 5)
+	ch <- 1
+	ch <- 2
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	vals := DrainCtx(ctx, ch)
+	// With a cancelled context, the select may pick either ctx.Done or the channel value.
+	// We just verify it doesn't hang and returns at most the buffered values.
+	if len(vals) > 2 {
+		t.Fatalf("expected at most 2 values, got %d", len(vals))
+	}
+}
+
+func TestDrainCtx_EmptyChannel(t *testing.T) {
+	ch := make(chan int, 5)
+	ctx := context.Background()
+	vals := DrainCtx(ctx, ch)
+	if len(vals) != 0 {
+		t.Fatalf("expected 0 values, got %d", len(vals))
+	}
+}
+
+func TestDrainCtx_ClosedChannel(t *testing.T) {
+	ch := make(chan int, 3)
+	ch <- 5
+	close(ch)
+	ctx := context.Background()
+	vals := DrainCtx(ctx, ch)
+	if len(vals) != 1 {
+		t.Fatalf("expected 1 value, got %d", len(vals))
+	}
+	if vals[0] != 5 {
+		t.Fatalf("expected 5, got %d", vals[0])
+	}
+}
+
+// --- Filter ---
+
+func TestFilter_MatchingValues(t *testing.T) {
+	in := make(chan int, 5)
+	for i := 1; i <= 5; i++ {
+		in <- i
+	}
+	close(in)
+
+	out := Filter(in, func(v int) bool { return v%2 == 0 })
+	var vals []int
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 2 || vals[0] != 2 || vals[1] != 4 {
+		t.Fatalf("expected [2 4], got %v", vals)
+	}
+}
+
+func TestFilter_NoMatches(t *testing.T) {
+	in := make(chan int, 3)
+	in <- 1
+	in <- 3
+	in <- 5
+	close(in)
+
+	out := Filter(in, func(v int) bool { return v%2 == 0 })
+	var vals []int
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 0 {
+		t.Fatalf("expected empty, got %v", vals)
+	}
+}
+
+func TestFilter_ClosedInputClosesOutput(t *testing.T) {
+	in := make(chan string)
+	close(in)
+
+	out := Filter(in, func(v string) bool { return true })
+	_, ok := <-out
+	if ok {
+		t.Fatal("expected output channel to be closed")
+	}
+}
+
+func TestFilter_AllMatch(t *testing.T) {
+	in := make(chan int, 3)
+	in <- 2
+	in <- 4
+	in <- 6
+	close(in)
+
+	out := Filter(in, func(v int) bool { return v%2 == 0 })
+	var vals []int
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 3 {
+		t.Fatalf("expected 3 values, got %d", len(vals))
+	}
+}
+
+// --- Map ---
+
+func TestMap_Transform(t *testing.T) {
+	in := make(chan int, 3)
+	in <- 1
+	in <- 2
+	in <- 3
+	close(in)
+
+	out := Map(in, func(v int) int { return v * 10 })
+	var vals []int
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 3 || vals[0] != 10 || vals[1] != 20 || vals[2] != 30 {
+		t.Fatalf("expected [10 20 30], got %v", vals)
+	}
+}
+
+func TestMap_TypeConversion(t *testing.T) {
+	in := make(chan int, 3)
+	in <- 1
+	in <- 2
+	in <- 3
+	close(in)
+
+	out := Map(in, func(v int) string {
+		return string(rune('a' + v - 1))
+	})
+	var vals []string
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 3 || vals[0] != "a" || vals[1] != "b" || vals[2] != "c" {
+		t.Fatalf("expected [a b c], got %v", vals)
+	}
+}
+
+func TestMap_ClosedInputClosesOutput(t *testing.T) {
+	in := make(chan int)
+	close(in)
+
+	out := Map(in, func(v int) int { return v })
+	_, ok := <-out
+	if ok {
+		t.Fatal("expected output channel to be closed")
+	}
+}
+
+func TestMap_EmptyChannel(t *testing.T) {
+	in := make(chan int)
+	close(in)
+
+	out := Map(in, func(v int) int { return v * 2 })
+	var vals []int
+	for v := range out {
+		vals = append(vals, v)
+	}
+	if len(vals) != 0 {
+		t.Fatalf("expected empty, got %v", vals)
+	}
+}
+
+// --- SendTimeout ---
+
+func TestSendTimeout_Success(t *testing.T) {
+	ch := make(chan int, 1)
+	ok := SendTimeout(ch, 42, 100*time.Millisecond)
+	if !ok {
+		t.Fatal("expected SendTimeout to return true")
+	}
+	val := <-ch
+	if val != 42 {
+		t.Fatalf("expected 42, got %d", val)
+	}
+}
+
+func TestSendTimeout_Timeout(t *testing.T) {
+	ch := make(chan int) // unbuffered, no receiver
+	ok := SendTimeout(ch, 1, 10*time.Millisecond)
+	if ok {
+		t.Fatal("expected SendTimeout to return false on timeout")
+	}
+}
+
+func TestSendTimeout_BufferedFull(t *testing.T) {
+	ch := make(chan int, 1)
+	ch <- 99 // fill the buffer
+	ok := SendTimeout(ch, 1, 10*time.Millisecond)
+	if ok {
+		t.Fatal("expected SendTimeout to return false on full buffer timeout")
+	}
+}
+
+// --- RecvTimeout ---
+
+func TestRecvTimeout_Success(t *testing.T) {
+	ch := make(chan int, 1)
+	ch <- 42
+	val, ok := RecvTimeout(ch, 100*time.Millisecond)
+	if !ok {
+		t.Fatal("expected RecvTimeout to return true")
+	}
+	if val != 42 {
+		t.Fatalf("expected 42, got %d", val)
+	}
+}
+
+func TestRecvTimeout_Timeout(t *testing.T) {
+	ch := make(chan int) // unbuffered, no sender
+	val, ok := RecvTimeout(ch, 10*time.Millisecond)
+	if ok {
+		t.Fatal("expected RecvTimeout to return false on timeout")
+	}
+	if val != 0 {
+		t.Fatalf("expected zero value, got %d", val)
+	}
+}
+
+func TestRecvTimeout_ClosedChannel(t *testing.T) {
+	ch := make(chan int)
+	close(ch)
+	val, ok := RecvTimeout(ch, 100*time.Millisecond)
+	if ok {
+		t.Fatal("expected RecvTimeout to return false on closed channel")
+	}
+	if val != 0 {
+		t.Fatalf("expected zero value, got %d", val)
+	}
+}
+
+func TestRecvTimeout_ClosedChannelWithValues(t *testing.T) {
+	ch := make(chan int, 2)
+	ch <- 10
+	ch <- 20
+	close(ch)
+	val, ok := RecvTimeout(ch, 100*time.Millisecond)
+	if !ok || val != 10 {
+		t.Fatalf("expected (10, true), got (%d, %v)", val, ok)
+	}
+	val, ok = RecvTimeout(ch, 100*time.Millisecond)
+	if !ok || val != 20 {
+		t.Fatalf("expected (20, true), got (%d, %v)", val, ok)
+	}
+	val, ok = RecvTimeout(ch, 10*time.Millisecond)
+	if ok {
+		t.Fatal("expected false after draining closed channel")
+	}
+}
+
 func TestSend_StringType(t *testing.T) {
 	ch := make(chan string, 1)
 	ok := Send(ch, "generic")

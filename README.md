@@ -66,6 +66,53 @@ outputs := safechan.Broadcast(input, 3)
 // Every value from input is sent to all 3 output channels
 ```
 
+### Drain (collect remaining values)
+
+```go
+ch := make(chan int, 10)
+ch <- 1
+ch <- 2
+ch <- 3
+
+vals := safechan.Drain(ch) // [1 2 3], non-blocking
+
+// With context support:
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+vals = safechan.DrainCtx(ctx, ch) // stops on context cancellation
+```
+
+### Filter / Map (channel transformers)
+
+```go
+// Filter: keep only even numbers
+evens := safechan.Filter(numbers, func(n int) bool { return n%2 == 0 })
+for val := range evens {
+    fmt.Println(val)
+}
+
+// Map: transform values
+doubled := safechan.Map(numbers, func(n int) int { return n * 2 })
+for val := range doubled {
+    fmt.Println(val)
+}
+
+// Map with type conversion
+strs := safechan.Map(numbers, func(n int) string { return fmt.Sprintf("%d", n) })
+```
+
+### Timeout Send / Receive
+
+```go
+ch := make(chan int)
+
+// Send with deadline
+ok := safechan.SendTimeout(ch, 42, 100*time.Millisecond) // false if timed out
+
+// Receive with deadline
+val, ok := safechan.RecvTimeout(ch, 100*time.Millisecond) // zero + false if timed out
+```
+
 ## API
 
 | Function | Description |
@@ -74,6 +121,12 @@ outputs := safechan.Broadcast(input, 3)
 | `SendCtx[T](ctx, ch, val)` | Context-aware send; returns false on cancellation or closed channel |
 | `Recv[T](ch)` | Receive with ok flag |
 | `RecvCtx[T](ctx, ch)` | Context-aware receive; returns zero + false on cancellation |
+| `Drain[T](ch)` | Non-blocking read of all buffered values |
+| `DrainCtx[T](ctx, ch)` | Context-aware drain; stops on cancellation |
+| `Filter[T](ch, pred)` | Forward only values matching predicate |
+| `Map[T, R](ch, fn)` | Transform each value through a function |
+| `SendTimeout[T](ch, val, d)` | Send with timeout; returns false on expiry |
+| `RecvTimeout[T](ch, d)` | Receive with timeout; returns zero + false on expiry |
 | `FanIn[T](channels...)` | Merge multiple channels into one |
 | `FanOut[T](ch, n)` | Distribute values round-robin to n channels |
 | `Broadcast[T](ch, n)` | Send each value to all n channels |

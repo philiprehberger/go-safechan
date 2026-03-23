@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Add `Drain` and `DrainCtx` for non-blocking collection of buffered channel values
+- Add `Filter` for forwarding only values matching a predicate
+- Add `Map` for transforming channel values with type conversion support
+- Add `SendTimeout` and `RecvTimeout` for deadline-based send/receive
+
 ## 0.1.2
 
 - Consolidate README badges onto single line
